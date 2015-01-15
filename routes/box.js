@@ -1,13 +1,15 @@
 var express = require('express')
-	, router = express.Router();
+  , router = express.Router();
 
 var passport = require('passport')
   , BoxStrategy = require('passport-box').Strategy;
 
+var Box = require('nodejs-box');
+
 var BOX_CLIENT_ID = "nj2xh160hkq0il10iubz3y29139h235c"
 var BOX_CLIENT_SECRET = "FviL0zPKiLiiDjCBljrWPbvH2TuHoVO6";
 
-//var User = require("../lib/user").User;
+var User = require("../lib/user").User;
 
 // Use the BoxStrategy within Passport.
 //   Strategies in Passport require a `verify` function, which accept
@@ -21,47 +23,31 @@ passport.use(new BoxStrategy({
   function(accessToken, refreshToken, profile, done) {
     // asynchronous verification, for effect...
     process.nextTick(function () {
-
-    	console.log(accessToken);
-    	console.log(refreshToken);
-    	console.log(profile);
-      
-      // To keep the example simple, the user's Box profile is returned to
-      // represent the logged-in user.  In a typical application, you would want
-      // to associate the Box account with a user record in your database,
-      // and return that user instead.
-      /*
-      winston.info("gp profile:",profile);
-
-    var user_id = 'gp:'+profile.id;
-
-    User.findById(user_id,function(err,user,can_create){
-      if(err) {
-        if(!can_create)
+      User.findOne({user_id:profile.id},function(err,user){
+        if(err){
+          console.log(err);
           return done(err);
-        
-        user = new User(
-          {
-            user_id:user_id,
-            strategy:'google',
-            first_name:profile.name.givenName,
-            last_name:profile.name.familyName,
-            profile_created:false
+        }
+
+        if(user){
+          user.accessToken = accessToken;
+          user.refreshToken = refreshToken;
+        }else{
+          user = new User({
+            user_id:profile.id,
+            name:profile.name,
+            login:profile.login,
+            accessToken:accessToken,
+            refreshToken:refreshToken
           });
-
+        }        
+        
         user.save(function(err){
-            if(err) done(err);
-
-            winston.info("added new google user to db:",user);
-            done(null,user);
+          if(err) return done(err);
+          console.log("added new box user to db:",user);
+          return done(null,user);
         });
-        return;
-      }
-      done(null,user);
-      winston.info("authenticated existing google user from db:",user);
-    });
-      */
-      return done(null, profile);
+      });
     });
   }
 ));
@@ -87,7 +73,19 @@ router.get('/',
 router.get('/callback', 
   passport.authenticate('box', { failureRedirect: '/login' }),
   function(req, res) {
-    res.redirect('/');
+    var box = new Box({
+      access_token:req.user.accessToken,
+      refresh_token:req.user.refreshToken
+    });
+
+    box.folders.root(function(err,box_res){
+      if(err){
+        console.log(err);
+        return res.status(500).json({error:err});
+      }
+      console.log(res);
+      res.json({response:box_res});
+    });
   });
 
 

@@ -11,7 +11,7 @@ var mongoose = require('mongoose');
 var routes = require('./routes/index');
 var users = require('./routes/users');
 
-//var User = require("./models/user").User;
+var User = require("./lib/user").User;
 
 var app = express();
 
@@ -50,26 +50,17 @@ app.get('/logout', function(req, res){
   res.redirect('/');
 });
 
-passport.serializeUser( function(user, done) {
-    done(null, user);
-});
-
-passport.deserializeUser( function(obj, done) {
-    done(null, obj);
-});
-
-/*
 //Passport user serialize deserialzie section
 passport.serializeUser(function(user, done) { //from user return id object
   done(null, user.user_id);
 });
 
 passport.deserializeUser(function(user_id, done) { //from id return user object
-  User.findById(user_id, function(error, user) {
+  User.findOne({user_id:user_id}, function(error, user) {
     done(error, user);
   });
 });
-*/
+
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
     var err = new Error('Not Found');
